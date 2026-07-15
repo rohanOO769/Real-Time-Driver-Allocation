@@ -63,7 +63,8 @@ export class DriversService {
     longitude: number,
     radiusKm = 5,
     limit = 5,
-  ) {
+  ): Promise<string[]> {
+
     const redis = this.redisService.getClient();
 
     const nearbyDrivers = await redis.call(
@@ -80,6 +81,6 @@ export class DriversService {
       limit,
     );
 
-    return nearbyDrivers;
+    return nearbyDrivers as string[];
   }
 }

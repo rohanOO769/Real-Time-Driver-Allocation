@@ -8,6 +8,7 @@ import { Ride, RideStatus } from './entities/ride.entity';
 import { CreateRideDto } from './dto/create-ride.dto';
 
 import { DriversService } from 'src/drivers/drivers.service';
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class RidesService {
@@ -16,6 +17,8 @@ export class RidesService {
     private readonly rideRepository: Repository<Ride>,
 
     private readonly driversService: DriversService,
+
+    private readonly redisService: RedisService,
   ) {}
 
   async create(dto: CreateRideDto) {
@@ -31,6 +34,15 @@ export class RidesService {
       dto.pickupLatitude,
       dto.pickupLongitude,
     );
+
+    const redis = this.redisService.getClient();
+
+    if (nearbyDrivers.length > 0) {
+      await redis.sadd(
+        `ride:${savedRide.id}:notified`,
+        ...nearbyDrivers.map(String),
+      );
+    }
 
     return {
       ride: savedRide,
