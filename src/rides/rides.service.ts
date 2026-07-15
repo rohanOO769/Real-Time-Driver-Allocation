@@ -1,6 +1,12 @@
 // src/rides/rides.service.ts
 
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
+
+import { AcceptRideDto } from './dto/accept-ride.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -52,5 +58,45 @@ export class RidesService {
 
   async findAll() {
     return this.rideRepository.find();
+  }
+
+  async acceptRide(
+    rideId: string,
+    dto: AcceptRideDto,
+  ) {
+    const ride = await this.rideRepository.findOneBy({
+      id: rideId,
+    });
+
+    if (!ride) {
+      throw new NotFoundException('Ride not found');
+    }
+
+    if (ride.status !== RideStatus.SEARCHING) {
+      throw new BadRequestException(
+        'Ride is no longer available',
+      );
+    }
+
+    const redis = this.redisService.getClient();
+
+    const notified = await redis.call(
+      'SISMEMBER',
+      `ride:${rideId}:notified`,
+      dto.driverId,
+    );
+
+    if (Number(notified) !== 1) {
+      throw new BadRequestException(
+        'Driver was not notified',
+      );
+    }
+
+    ride.assignedDriverId = dto.driverId;
+    ride.status = RideStatus.ASSIGNED;
+
+    await this.rideRepository.save(ride);
+
+    return ride;
   }
 }
