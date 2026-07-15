@@ -56,5 +56,30 @@ export class DriversService {
     return {
         message: 'Location updated successfully',
     };
-    }
+  }
+
+  async findNearbyDrivers(
+    latitude: number,
+    longitude: number,
+    radiusKm = 5,
+    limit = 5,
+  ) {
+    const redis = this.redisService.getClient();
+
+    const nearbyDrivers = await redis.call(
+      'GEOSEARCH',
+      'drivers:geo',
+      'FROMLONLAT',
+      longitude,
+      latitude,
+      'BYRADIUS',
+      radiusKm,
+      'km',
+      'ASC',
+      'COUNT',
+      limit,
+    );
+
+    return nearbyDrivers;
+  }
 }
