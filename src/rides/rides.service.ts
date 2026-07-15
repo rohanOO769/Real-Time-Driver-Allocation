@@ -92,6 +92,17 @@ export class RidesService {
       );
     }
 
+    const won = await this.redisService.tryAssignRide(
+      rideId,
+      dto.driverId,
+    );
+
+    if (!won) {
+      throw new BadRequestException(
+        'Ride already assigned to another driver',
+      );
+    }
+
     ride.assignedDriverId = dto.driverId;
     ride.status = RideStatus.ASSIGNED;
 

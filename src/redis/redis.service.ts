@@ -30,4 +30,21 @@ export class RedisService {
   getClient() {
     return this.client;
   }
+
+  async tryAssignRide(
+    rideId: string,
+    driverId: string,
+  ): Promise<boolean> {
+    const key = `ride:${rideId}:assignment`;
+
+    const result = await this.client.set(
+      key,
+      driverId,
+      'EX',
+      120,
+      'NX',
+    );
+
+    return result === 'OK';
+  }
 }
