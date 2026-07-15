@@ -5,6 +5,7 @@ import { ConfigModule } from '@nestjs/config';
 import { DatabaseModule } from './database/database.module';
 import { RedisModule } from './redis/redis.module';
 import { DriversModule } from './drivers/drivers.module';
+import { RidesModule } from './rides/rides.module';
 
 @Module({
   imports: [
@@ -17,6 +18,8 @@ import { DriversModule } from './drivers/drivers.module';
     RedisModule,
 
     DriversModule,
+
+    RidesModule,
   ],
 })
 export class AppModule {}
