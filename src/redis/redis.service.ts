@@ -62,4 +62,13 @@ export class RedisService {
 
     return Number(result);
   }
+
+  async cleanupRideKeys(
+    rideId: string,
+  ): Promise<void> {
+    await this.client.del(
+      `ride:${rideId}:notified`,
+      `ride:${rideId}:assignment`,
+    );
+  }
 }

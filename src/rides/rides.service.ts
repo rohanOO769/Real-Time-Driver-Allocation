@@ -117,6 +117,10 @@ export class RidesService {
 
         await this.rideRepository.save(ride);
 
+        await this.redisService.cleanupRideKeys(
+          ride.id,
+        );
+
         return ride;
 
       default:
@@ -167,6 +171,10 @@ export class RidesService {
       ride.status = RideStatus.TIMEOUT;
 
       await this.rideRepository.save(ride);
+
+      await this.redisService.cleanupRideKeys(
+        ride.id,
+      );
 
       console.log(
         `Ride ${ride.id} timed out`,
