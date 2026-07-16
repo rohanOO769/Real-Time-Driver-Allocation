@@ -34,17 +34,32 @@ export class RedisService {
   async tryAssignRide(
     rideId: string,
     driverId: string,
-  ): Promise<boolean> {
+  ): Promise<number> {
     const key = `ride:${rideId}:assignment`;
 
-    const result = await this.client.set(
+    const script = `
+      local current = redis.call('GET', KEYS[1])
+
+      if current then
+        if current == ARGV[1] then
+          return 2
+        else
+          return 0
+        end
+      end
+
+      redis.call('SET', KEYS[1], ARGV[1], 'EX', 120)
+
+      return 1
+    `;
+
+    const result = await this.client.eval(
+      script,
+      1,
       key,
       driverId,
-      'EX',
-      120,
-      'NX',
     );
 
-    return result === 'OK';
+    return Number(result);
   }
 }

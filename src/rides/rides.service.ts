@@ -92,22 +92,33 @@ export class RidesService {
       );
     }
 
-    const won = await this.redisService.tryAssignRide(
+    const result = await this.redisService.tryAssignRide(
       rideId,
       dto.driverId,
     );
 
-    if (!won) {
-      throw new BadRequestException(
-        'Ride already assigned to another driver',
-      );
+    switch (result) {
+
+      case 0:
+        throw new BadRequestException(
+          'Ride already assigned to another driver',
+        );
+
+      case 2:
+        return ride;
+
+      case 1:
+        ride.assignedDriverId = dto.driverId;
+        ride.status = RideStatus.ASSIGNED;
+
+        await this.rideRepository.save(ride);
+
+        return ride;
+
+      default:
+        throw new BadRequestException(
+          'Unexpected Redis response',
+        );
     }
-
-    ride.assignedDriverId = dto.driverId;
-    ride.status = RideStatus.ASSIGNED;
-
-    await this.rideRepository.save(ride);
-
-    return ride;
   }
 }
