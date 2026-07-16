@@ -18,6 +18,9 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
+    "seed": "ts-node scripts/seed-drivers.ts",
+    "locations": "ts-node scripts/update-driver-locations.ts",
+    "ride": "ts-node scripts/create-test-ride.ts",
     "concurrency": "ts-node scripts/concurrency-test.ts"
   },
   "dependencies": {
