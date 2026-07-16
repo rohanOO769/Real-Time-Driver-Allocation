@@ -1,99 +1,341 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Real-Time Driver Allocation System
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A backend service built with **NestJS**, **PostgreSQL**, and **Redis** that simulates the core workflow of a ride-hailing platform. The system performs geo-based driver discovery, handles concurrent driver acceptance requests safely, retries allocation when no driver accepts, and guarantees that only one driver can be assigned to a ride.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## Features
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+* Driver registration
+* Real-time driver location updates using Redis GEO
+* Geo-based nearby driver search
+* Ride creation and allocation
+* Simulated driver notification using Redis Sets
+* Atomic ride assignment using a Redis Lua script
+* Idempotent ride acceptance
+* Retry allocation with an expanded search radius
+* Automatic timeout when no additional drivers are available
+* Concurrency test demonstrating race-condition safety
 
-## Project setup
+---
 
-```bash
-$ npm install
+## Technology Stack
+
+* **Backend:** NestJS (TypeScript)
+* **Database:** PostgreSQL
+* **Cache / Geo Search:** Redis
+* **ORM:** TypeORM
+* **Containerization:** Docker Compose
+
+---
+
+## System Architecture
+
+```text
+                    Rider Request
+                         │
+                         ▼
+                 Create Ride (PostgreSQL)
+                         │
+                         ▼
+              Redis GEO Nearby Search
+                         │
+                         ▼
+      Notify Nearby Drivers (Redis Set)
+                         │
+                         ▼
+        Driver Accept Request (Concurrent)
+                         │
+                         ▼
+      Redis Lua Script (Atomic Assignment)
+                │                    │
+         Assignment Won        Assignment Lost
+                │                    │
+                ▼                    ▼
+      Update Ride Status       Reject Request
+                │
+                ▼
+          ASSIGNED / RETRYING / TIMEOUT
 ```
 
-## Compile and run the project
+---
 
-```bash
-# development
-$ npm run start
+## Ride Lifecycle
 
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+```text
+REQUESTED
+     │
+     ▼
+SEARCHING
+     │
+     ├──────────────► ASSIGNED
+     │
+     ▼
+RETRYING
+     │
+     ├──────────────► ASSIGNED
+     │
+     ▼
+TIMEOUT
 ```
 
-## Run tests
+Additional state introduced:
 
-```bash
-# unit tests
-$ npm run test
+* **RETRYING** – Ride is being reallocated after the initial search expires.
 
-# e2e tests
-$ npm run test:e2e
+---
 
-# test coverage
-$ npm run test:cov
+## Redis Data Structures
+
+### GEO Set
+
+Stores the latest driver locations.
+
+```text
+drivers:geo
 ```
 
-## Deployment
+Used for:
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+* Driver location updates
+* Nearby driver discovery
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+---
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+### Notification Set
+
+Tracks which drivers have already been notified for a ride.
+
+```text
+ride:<rideId>:notified
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+This prevents notifying the same driver multiple times during retries.
 
-## Resources
+---
 
-Check out a few resources that may come in handy when working with NestJS:
+### Assignment Lock
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```text
+ride:<rideId>:assignment
+```
 
-## Support
+Created atomically using a Redis Lua script.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+Guarantees that:
 
-## Stay in touch
+* Only one driver can win the assignment.
+* Duplicate requests from the winning driver are idempotent.
+* Other drivers cannot overwrite the assignment.
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
 
-## License
+## Concurrency Handling
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
-"# Real-Time-Driver-Allocation" 
+Multiple drivers may attempt to accept the same ride simultaneously.
+
+To prevent race conditions, the assignment logic is implemented using a **Redis Lua script**, which executes atomically inside Redis.
+
+Possible outcomes:
+
+* **1** → Driver successfully assigned.
+* **2** → Duplicate request from the same driver (idempotent).
+* **0** → Ride already assigned to another driver.
+
+This guarantees that exactly one driver is assigned even under heavy concurrent load.
+
+---
+
+## Retry Logic
+
+1. Search for nearby drivers within **5 km**.
+2. Notify all discovered drivers.
+3. Wait **15 seconds**.
+4. If no driver accepts:
+
+   * Expand the search radius to **10 km**.
+   * Notify only newly discovered drivers.
+5. If no additional drivers are found, mark the ride as **TIMEOUT**.
+
+---
+
+## Project Setup
+
+### Prerequisites
+
+* Node.js
+* Docker
+* Docker Compose
+
+### Install Dependencies
+
+```bash
+npm install
+```
+
+### Start PostgreSQL and Redis
+
+```bash
+docker compose up -d
+```
+
+### Run the Application
+
+```bash
+npm run start:dev
+```
+
+---
+
+## API Endpoints
+
+### Create Driver
+
+```http
+POST /drivers
+```
+
+Example:
+
+```json
+{
+  "name": "Driver 1"
+}
+```
+
+---
+
+### Update Driver Location
+
+```http
+POST /drivers/location
+```
+
+Example:
+
+```json
+{
+  "driverId": "<driver-id>",
+  "latitude": 12.9716,
+  "longitude": 77.5946
+}
+```
+
+---
+
+### Get Drivers
+
+```http
+GET /drivers
+```
+
+---
+
+### Create Ride
+
+```http
+POST /rides
+```
+
+Example:
+
+```json
+{
+  "riderName": "John",
+  "pickupLatitude": 12.9716,
+  "pickupLongitude": 77.5946
+}
+```
+
+---
+
+### Accept Ride
+
+```http
+POST /rides/:rideId/accept
+```
+
+Example:
+
+```json
+{
+  "driverId": "<driver-id>"
+}
+```
+
+---
+
+### Get All Rides
+
+```http
+GET /rides
+```
+
+---
+
+## Concurrency Verification
+
+A concurrency test script is included to verify that only one driver can successfully accept a ride.
+
+Run:
+
+```bash
+npm run concurrency
+```
+
+Expected output:
+
+* One request succeeds with **201 Created**.
+* Remaining requests fail with **400 Bad Request**.
+* The ride is assigned to exactly one driver.
+
+---
+
+## Design Decisions
+
+### Driver Notification
+
+Driver notification is simulated using a Redis Set (`ride:<rideId>:notified`) rather than WebSockets or Server-Sent Events.
+
+This approach satisfies the assignment requirement while keeping the focus on reliable concurrency handling and deterministic testing.
+
+### Atomic Assignment
+
+Redis Lua scripting was chosen because Redis executes Lua scripts atomically, eliminating race conditions without requiring distributed locks.
+
+---
+
+## Future Improvements
+
+* Replace `setTimeout()` with **BullMQ** for durable delayed jobs.
+* Add WebSocket-based real-time driver notifications.
+* Support multiple retry rounds with progressively increasing search radius.
+* Track driver availability (AVAILABLE/BUSY).
+* Persist notification history.
+* Add authentication and authorization.
+* Add unit and integration tests.
+* Deploy using Kubernetes or a cloud platform.
+
+---
+
+## Repository Structure
+
+```text
+src/
+ ├── drivers/
+ ├── rides/
+ ├── redis/
+ ├── database/
+ └── app.module.ts
+
+scripts/
+ └── concurrency-test.ts
+
+docker-compose.yml
+```
+
+---
+
+## Author
+
+Rohan Amin
