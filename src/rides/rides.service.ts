@@ -145,12 +145,52 @@ export class RidesService {
       return;
     }
 
-    console.log(
-      `Retrying ride ${ride.id}`,
+    const redis = this.redisService.getClient();
+
+    const nearbyDrivers =
+      await this.driversService.findNearbyDrivers(
+        ride.pickupLatitude,
+        ride.pickupLongitude,
+        10, // retry radius
+      );
+
+    const alreadyNotified = await redis.smembers(
+      `ride:${ride.id}:notified`,
+    );
+
+    const newDrivers = nearbyDrivers.filter(
+      (driverId) => !alreadyNotified.includes(driverId),
+    );
+
+    if (newDrivers.length === 0) {
+
+      ride.status = RideStatus.TIMEOUT;
+
+      await this.rideRepository.save(ride);
+
+      console.log(
+        `Ride ${ride.id} timed out`,
+      );
+
+      return;
+    }
+
+    await redis.sadd(
+      `ride:${ride.id}:notified`,
+      ...newDrivers,
     );
 
     ride.status = RideStatus.RETRYING;
 
     await this.rideRepository.save(ride);
+
+    console.log(
+      `Retrying ride ${ride.id}`,
+    );
+
+    console.log(
+      'New drivers:',
+      newDrivers,
+    );
   }
 }
