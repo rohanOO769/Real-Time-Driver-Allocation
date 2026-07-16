@@ -175,6 +175,8 @@ This guarantees that exactly one driver is assigned even under heavy concurrent 
 npm install
 ```
 
+### Update the .env
+
 ### Start PostgreSQL and Redis
 
 ```bash
