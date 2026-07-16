@@ -11,6 +11,7 @@ import {
 export enum RideStatus {
   REQUESTED = 'REQUESTED',
   SEARCHING = 'SEARCHING',
+  RETRYING = 'RETRYING',
   ASSIGNED = 'ASSIGNED',
   TIMEOUT = 'TIMEOUT',
 }

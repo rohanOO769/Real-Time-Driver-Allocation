@@ -50,6 +50,10 @@ export class RidesService {
       );
     }
 
+    setTimeout(() => {
+      this.retryRide(savedRide.id);
+    }, 15000);
+
     return {
       ride: savedRide,
       nearbyDrivers,
@@ -72,7 +76,7 @@ export class RidesService {
       throw new NotFoundException('Ride not found');
     }
 
-    if (ride.status !== RideStatus.SEARCHING) {
+    if (ride.status !== RideStatus.SEARCHING && ride.status !== RideStatus.RETRYING) {
       throw new BadRequestException(
         'Ride is no longer available',
       );
@@ -120,5 +124,33 @@ export class RidesService {
           'Unexpected Redis response',
         );
     }
+  }
+
+  private async retryRide(
+    rideId: string,
+  ): Promise<void> {
+
+    const ride = await this.rideRepository.findOneBy({
+      id: rideId,
+    });
+
+    if (!ride) {
+      return;
+    }
+
+    if (ride.status === RideStatus.ASSIGNED) {
+      console.log(
+        `Ride ${ride.id} already assigned`,
+      );
+      return;
+    }
+
+    console.log(
+      `Retrying ride ${ride.id}`,
+    );
+
+    ride.status = RideStatus.RETRYING;
+
+    await this.rideRepository.save(ride);
   }
 }
