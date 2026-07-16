@@ -30,7 +30,9 @@ A backend service built with **NestJS**, **PostgreSQL**, and **Redis** that simu
 ---
 
 ## System Architecture
+<img width="754" height="573" alt="Ride booking architecture" src="https://github.com/user-attachments/assets/cf6f6f5a-b1be-4691-bf85-3636bf60ea9e" />
 
+### Data Flow
 ```text
                     Rider Request
                          │
@@ -308,7 +310,7 @@ Redis Lua scripting was chosen because Redis executes Lua scripts atomically, el
 ## Future Improvements
 
 * Replace `setTimeout()` with **BullMQ** for durable delayed jobs.
-* Add WebSocket-based real-time driver notifications.
+* WebSocket-based real-time driver notifications.
 * Support multiple retry rounds with progressively increasing search radius.
 * Track driver availability (AVAILABLE/BUSY).
 * Persist notification history.
@@ -329,10 +331,59 @@ src/
  └── app.module.ts
 
 scripts/
- └── concurrency-test.ts
+ ├── seed-drivers.ts
+ ├── update-driver-locations.ts
+ ├── create-test-ride.ts
+ ├── concurrency-test.ts
 
 docker-compose.yml
 ```
+
+---
+
+## Screenshots
+
+### Start the container with the PostgreSQL and Redis instance
+<img width="917" height="346" alt="image" src="https://github.com/user-attachments/assets/8c4ffe6e-728b-4cce-8e15-81a86f65fa79" />
+
+### Start the NestJS App
+<img width="632" height="128" alt="image" src="https://github.com/user-attachments/assets/164718f5-32ad-43e4-805b-2a7ab9b80f94" />
+<img width="927" height="990" alt="image" src="https://github.com/user-attachments/assets/60ac1bc6-0b6d-4485-8379-13fc9d7c248d" />
+
+### Run the automation scripts for data ingestion and testing
+- Run the helper scripts for quickly generating test data.
+```bash
+# Create sample drivers
+npm run seed
+
+# Update all driver locations
+npm run locations
+
+# Create a ride
+npm run ride
+
+# Simulate concurrent driver acceptance
+npm run concurrency
+```
+- Create Drivers
+- <img width="672" height="257" alt="image" src="https://github.com/user-attachments/assets/133b20e1-c67f-4fb9-a8e8-c8b72b8ce154" />
+- Update Locations
+- <img width="601" height="262" alt="image" src="https://github.com/user-attachments/assets/50063c19-859c-4a75-aa85-74abc0e24ab9" />
+- Book a ride
+- <img width="566" height="205" alt="image" src="https://github.com/user-attachments/assets/26fa843e-2909-4748-9ff5-53d92f69dcd6" />
+- Run the concurrency test
+  - Booking failed because no rides were accepted with the time limit causing a timeout - Expected Behaviour
+  - <img width="931" height="400" alt="image" src="https://github.com/user-attachments/assets/f9e8be08-7901-474a-9e4e-c631d3842c2b" />
+  - Booking successful
+  - <img width="1057" height="587" alt="image" src="https://github.com/user-attachments/assets/2abb9241-add9-4eea-902a-fc5e1f49d9ad" />
+- Further tests can also be performed manually using tools such as. Postman 
+
+### Stop the Services
+
+```bash
+docker compose down
+```
+
 
 ---
 
